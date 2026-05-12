@@ -1,0 +1,49 @@
+name: Daily API test
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run the tests on'
+        required: false
+        default: 'main'
+  schedule:
+    - cron: '*/15 * * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.branch || 'main' }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Newman
+        run: |
+          npm install -g newman
+          npm install pg
+
+      - name: Run Postman Collection
+        run: |
+         newman run FLOW_GH.postman_collection.json \
+         --export-environment vars_output.json
+
+      - name: Extract Email from Collection Vars
+        run: |
+          EMAIL=$(jq -r '.values[] | select(.key=="currentEmail") | .value' vars_output.json)
+          echo "USER_EMAIL=$EMAIL" >> $GITHUB_ENV
+          echo "Captured Email: $EMAIL"
+
+      - name: Verify User in Database
+        env:
+          # This pulls the secret from GitHub's vault into the runner
+          DB_URL: ${{ secrets.DB_CONNECTION_STRING }}
+          USER_EMAIL: ${{ env.USER_EMAIL }}
+        run: node verify_user.js
+            
