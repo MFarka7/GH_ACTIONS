@@ -3,12 +3,6 @@ name: New API
 on: 
  schedule:
    - cron: '*/15 * * * *'
- workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to run the tests on'
-        required: true
-        default: 'main'
         
 jobs:
  build:
